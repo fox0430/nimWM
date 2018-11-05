@@ -11,25 +11,27 @@ type XWindowInfo = object
   ev*: TXEvent
 
 proc initXWIndowInfo(winInfo: var XWindowInfo): XWIndowInfo =
-  var display = XOpenDisplay(nil)
-  if display == nil:
+  winInfo.display = XOpenDisplay(nil)
+  if winInfo.display == nil:
     quit "Failed to open display"
   
-  discard XGrabKey(display, XKeysymToKeycode(display, XStringToKeysym("F1")), Mod1Mask,
-    DefaultRootWindow(display), true, GrabModeAsync, GrabModeAsync)
-  discard XGrabButton(display, 1, Mod1Mask, DefaultRootWindow(display), true,
+  discard XGrabKey(winInfo.display, XKeysymToKeycode(winInfo.display, XStringToKeysym("F1")), Mod1Mask,
+    DefaultRootWindow(winInfo.display), true, GrabModeAsync, GrabModeAsync)
+  discard XGrabButton(winInfo.display, 1, Mod1Mask, DefaultRootWindow(winInfo.display), true,
     ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None)
-  discard XGrabButton(display, 3, Mod1Mask, DefaultRootWindow(display), true,
+  discard XGrabButton(winInfo.display, 3, Mod1Mask, DefaultRootWindow(winInfo.display), true,
     ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None)
   
   winInfo.start.subwindow = None
+
+  return winInfo
 
 when isMainModule:
 
   var winInfo: XWindowInfo
   
   winInfo = initXWIndowInfo(winInfo)
-  
+
   while true:
     discard XNextEvent(winInfo.display, winInfo.ev.addr)
   
