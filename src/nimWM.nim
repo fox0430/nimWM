@@ -4,42 +4,50 @@ converter int32toCUint(x: int32): cuint = x.cuint
 converter toTBool(x: bool): TBool = x.TBool
 converter toBool(x: TBool): bool = x.bool
 
-var
-  attr: TXWindowAttributes
-  start:TXButtonEvent
-  ev:TXEvent
+type XWindowInfo = object
+  display*: PDisplay
+  attr*: TXWindowAttributes
+  start*: TXButtonEvent
+  ev*: TXEvent
 
-var display = XOpenDisplay(nil)
-if display == nil:
-  quit "Failed to open display"
+proc initXWIndowInfo(winInfo: var XWindowInfo): XWIndowInfo =
+  var display = XOpenDisplay(nil)
+  if display == nil:
+    quit "Failed to open display"
+  
+  discard XGrabKey(display, XKeysymToKeycode(display, XStringToKeysym("F1")), Mod1Mask,
+    DefaultRootWindow(display), true, GrabModeAsync, GrabModeAsync)
+  discard XGrabButton(display, 1, Mod1Mask, DefaultRootWindow(display), true,
+    ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None)
+  discard XGrabButton(display, 3, Mod1Mask, DefaultRootWindow(display), true,
+    ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None)
+  
+  winInfo.start.subwindow = None
 
-discard XGrabKey(display, XKeysymToKeycode(display, XStringToKeysym("F1")), Mod1Mask,
-  DefaultRootWindow(display), true, GrabModeAsync, GrabModeAsync)
-discard XGrabButton(display, 1, Mod1Mask, DefaultRootWindow(display), true,
-  ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None)
-discard XGrabButton(display, 3, Mod1Mask, DefaultRootWindow(display), true,
-  ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None)
+when isMainModule:
 
-start.subwindow = None
-
-while true:
-  discard XNextEvent(display,ev.addr)
-
-  if ev.theType == KeyPress and ev.xkey.subwindow != None:
-    discard XRaiseWindow(display, ev.xkey.subwindow);
-  elif ev.theType == ButtonPress and ev.xkey.subwindow != None:
-    discard XGetWindowAttributes(display, ev.xbutton.subwindow, attr.addr);
-    start = ev.xbutton;
-  elif ev.theType == MotionNotify and start.subwindow != None:
-    var
-       xdiff = ev.xbutton.x_root - start.x_root
-       ydiff = ev.xbutton.y_root - start.y_root
-
-    discard XMoveResizeWindow(display, start.subwindow,
-      attr.x + (if start.button==1: xdiff else: 0),
-      attr.y + (if start.button==1: ydiff else: 0),
-      max(1, attr.width + (if start.button==3: xdiff else: 0)),
-      max(1, attr.height + (if start.button==3: ydiff else: 0)))
-
-  elif ev.theType == ButtonRelease:
-    start.subwindow = None
+  var winInfo: XWindowInfo
+  
+  winInfo = initXWIndowInfo(winInfo)
+  
+  while true:
+    discard XNextEvent(winInfo.display, winInfo.ev.addr)
+  
+    if winInfo.ev.theType == KeyPress and winInfo.ev.xkey.subwindow != None:
+      discard XRaiseWindow(winInfo.display, winInfo.ev.xkey.subwindow);
+    elif winInfo.ev.theType == ButtonPress and winInfo.ev.xkey.subwindow != None:
+      discard XGetWindowAttributes(winInfo.display, winInfo.ev.xbutton.subwindow, winInfo.attr.addr);
+      winInfo.start = winInfo.ev.xbutton;
+    elif winInfo.ev.theType == MotionNotify and winInfo.start.subwindow != None:
+      var
+         xdiff = winInfo.ev.xbutton.x_root - winInfo.start.x_root
+         ydiff = winInfo.ev.xbutton.y_root - winInfo.start.y_root
+  
+      discard XMoveResizeWindow(winInfo.display, winInfo.start.subwindow,
+        winInfo.attr.x + (if winInfo.start.button == 1: xdiff else: 0),
+        winInfo.attr.y + (if winInfo.start.button == 1: ydiff else: 0),
+        max(1, winInfo.attr.width + (if winInfo.start.button == 3: xdiff else: 0)),
+        max(1, winInfo.attr.height + (if winInfo.start.button == 3: ydiff else: 0)))
+  
+    elif winInfo.ev.theType == ButtonRelease:
+      winInfo.start.subwindow = None
