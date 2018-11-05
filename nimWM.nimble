@@ -5,7 +5,7 @@ author        = "fox0430"
 description   = "simple window manager"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["nimWM"]
+bin           = @["nimwm"]
 
 # Dependencies
 
