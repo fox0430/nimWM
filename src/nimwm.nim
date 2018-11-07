@@ -35,21 +35,34 @@ when isMainModule:
   while true:
     discard XNextEvent(winInfo.display, winInfo.ev.addr)
   
-    if winInfo.ev.theType == KeyPress and winInfo.ev.xkey.subwindow != None:
-      discard XRaiseWindow(winInfo.display, winInfo.ev.xkey.subwindow);
-    elif winInfo.ev.theType == ButtonPress and winInfo.ev.xkey.subwindow != None:
-      discard XGetWindowAttributes(winInfo.display, winInfo.ev.xbutton.subwindow, winInfo.attr.addr);
-      winInfo.start = winInfo.ev.xbutton;
-    elif winInfo.ev.theType == MotionNotify and winInfo.start.subwindow != None:
+    if winInfo.ev.theType == KeyPress:
+      var kev = cast[PXKeyEvent](winInfo.ev.addr)[]
+      if not kev.subwindow.addr.isNil:
+        discard XLowerWindow(winInfo.display, kev.subwindow)
+
+    elif winInfo.ev.theType == ButtonPress:
+      var bev = cast[PXButtonEvent](winInfo.ev.addr)[]
+      if not bev.subwindow.addr.isNil:
+        discard XGrabPointer(winInfo.display, bev.subwindow, true,
+          PointerMotionMask or ButtonReleaseMask, GrabModeAsync,
+          GrabModeAsync, None, None, CurrentTime)
+        discard XGetWindowAttributes(winInfo.display, bev.subwindow, winInfo.attr.addr);
+        winInfo.start = bev;
+    elif winInfo.ev.theType == MotionNotify:
+      var mnev = cast[PXMotionEvent](winInfo.ev.addr)[]
+      var bev = cast[PXButtonEvent](winInfo.ev.addr)[]
+      while XCheckTypedEvent(winInfo.display, MotionNotify, winInfo.ev.addr):
+        continue
       var
-         xdiff = winInfo.ev.xbutton.x_root - winInfo.start.x_root
-         ydiff = winInfo.ev.xbutton.y_root - winInfo.start.y_root
-  
-      discard XMoveResizeWindow(winInfo.display, winInfo.start.subwindow,
-        winInfo.attr.x + (if winInfo.start.button == 1: xdiff else: 0),
-        winInfo.attr.y + (if winInfo.start.button == 1: ydiff else: 0),
-        max(1, winInfo.attr.width + (if winInfo.start.button == 3: xdiff else: 0)),
-        max(1, winInfo.attr.height + (if winInfo.start.button == 3: ydiff else: 0)))
-  
+        xdiff = bev.x_root - winInfo.start.x_root
+        ydiff = bev.y_root - winInfo.start.y_root
+      discard XMoveResizeWindow(winInfo.display, mnev.window,
+        winInfo.attr.x + (if winInfo.start.button==1: xdiff else: 0),
+        winInfo.attr.y + (if winInfo.start.button==1: ydiff else: 0),
+        max(1, winInfo.attr.width + (if winInfo.start.button==3: xdiff else: 0)),
+        max(1, winInfo.attr.height + (if winInfo.start.button==3: ydiff else: 0)))
+
     elif winInfo.ev.theType == ButtonRelease:
-      winInfo.start.subwindow = None
+      discard XUngrabPointer(winInfo.display, CurrentTime)
+    else:
+      continue
