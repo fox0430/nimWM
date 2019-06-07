@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.0.1"
+version       = "0.0.2"
 author        = "fox0430"
 description   = "simple window manager"
 license       = "MIT"
